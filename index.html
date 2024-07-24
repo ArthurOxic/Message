@@ -3,18 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Chat App</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>ChatWeb</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- create a form to send message -->
-    <form id="messageForm" onsubmit="return sendMessage();">
-        <input id="message" placeholder="Enter message" autocomplete="off" required>
-        <input type="submit" value="Send">
-    </form>
+    <div class="username-container">
+        <span class="userc">Create Username</span><br />
+        <input class="inpu133" type="text" id="username" placeholder="Enter username"><br />
+        <button class="bu1" onclick="joinChat()">JOIN</button>
+    </div>
 
-    <!-- create a list -->
-    <ul id="messages"></ul>
+    <div class="divmain" id="chatContainer" style="display: none;">
+        <!-- All Delete My Messages button -->
+        <span class="hlw">WebChat</span>
+        <button class="delete-messages-button" id="deleteMyMessages" onclick="deleteAllMyMessages();">Delete All My Messages</button>
+
+        <!-- create a form to send message -->
+        <form class="dive1" id="messageForm" onsubmit="return sendMessage();">
+            <div class="alal">
+                <input class="input1234" id="message" placeholder="Enter message" autocomplete="off" required>
+                <input class="input1235" type="submit" value="Send">
+            </div>
+        </form>
+        
+        <!-- create a list for messages -->
+        <ul class="ul12" id="messages"></ul>
+    </div>
 
     <!-- The core Firebase JS SDK is always required and must be listed first -->
     <script src="https://www.gstatic.com/firebasejs/6.6.1/firebase-app.js"></script>
@@ -35,55 +49,103 @@
         };
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
+        console.log("Firebase initialized");
 
-        var myName = prompt("Enter your name");
+        var myName;
+var userColors = {}; // To store unique colors for each username
 
-        function sendMessage() {
-            // get message
-            var message = document.getElementById("message").value;
-    
-            // save in database
-            firebase.database().ref("messages").push().set({
-                "sender": myName,
-                "message": message
-            });
-    
-            // clear the input field
-            document.getElementById("message").value = "";
-    
-            // prevent form from submitting
-            return false;
+function joinChat() {
+    myName = document.getElementById("username").value;
+    if (myName.trim() !== "") {
+        document.querySelector(".username-container").style.display = "none";
+        document.getElementById("chatContainer").style.display = "block";
+    } else {
+        alert("Please enter a username");
+    }
+}
+
+function sendMessage() {
+    // get message
+    var message = document.getElementById("message").value;
+    console.log("Sending message:", message);
+
+    // save in database
+    firebase.database().ref("messages").push().set({
+        "sender": myName,
+        "message": message,
+        "timestamp": firebase.database.ServerValue.TIMESTAMP // Add timestamp for ordering
+    }, function(error) {
+        if (error) {
+            console.log("Error:", error);
+        } else {
+            console.log("Message sent successfully");
         }
+    });
 
-        // listen for incoming messages
-        firebase.database().ref("messages").on("child_added", function (snapshot) {
-            var html = "";
-            // give each message a unique ID
-            html += "<li id='message-" + snapshot.key + "'>";
-            // show delete button if message is sent by me
-            if (snapshot.val().sender == myName) {
-                html += "<button data-id='" + snapshot.key + "' onclick='deleteMessage(this);'>";
-                    html += "Delete";
-                html += "</button>";
+    // clear the input field
+    document.getElementById("message").value = "";
+
+    // prevent form from submitting
+    return false;
+}
+
+// listen for incoming messages
+firebase.database().ref("messages").orderByChild("timestamp").on("value", function(snapshot) {
+    var messagesContainer = document.getElementById("messages");
+    messagesContainer.innerHTML = ""; // Clear current messages
+
+    snapshot.forEach(function(childSnapshot) {
+        var message = childSnapshot.val();
+        var messageClass = (message.sender === myName) ? "sent" : "received";
+
+        var messageElement = document.createElement("li");
+        messageElement.classList.add(messageClass);
+
+        var messageContainer = document.createElement("div");
+        messageContainer.classList.add("message-container");
+
+        var usernameDiv = document.createElement("div");
+        usernameDiv.classList.add("username");
+        usernameDiv.style.color = "#FFFFFF"; // Set username color to white
+        usernameDiv.style.fontWeight = "bold";
+        usernameDiv.textContent = message.sender;
+
+        var messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+        messageDiv.textContent = message.message;
+
+        messageContainer.appendChild(usernameDiv);
+        messageContainer.appendChild(messageDiv);
+        messageElement.appendChild(messageContainer);
+
+        messagesContainer.appendChild(messageElement);
+    });
+
+    scrollToBottom(); // Scroll to bottom after adding new messages
+});
+
+function deleteAllMyMessages() {
+    firebase.database().ref("messages").once("value", function(snapshot) {
+        snapshot.forEach(function(childSnapshot) {
+            if (childSnapshot.val().sender === myName) {
+                firebase.database().ref("messages").child(childSnapshot.key).remove();
             }
-            html += snapshot.val().sender + ": " + snapshot.val().message;
-            html += "</li>";
-    
-            document.getElementById("messages").innerHTML += html;
         });
+    });
+}
 
-        function deleteMessage(self) {
-            // get message ID
-            var messageId = self.getAttribute("data-id");
-    
-            // delete message
-            firebase.database().ref("messages").child(messageId).remove();
-        }
-        
+function scrollToBottom() {
+    var messagesList = document.getElementById("messages");
+    messagesList.scrollTop = messagesList.scrollHeight;
+}
+
         // attach listener for delete message
         firebase.database().ref("messages").on("child_removed", function (snapshot) {
             // remove message node
-            document.getElementById("message-" + snapshot.key).innerHTML = "This message has been removed";
+            var messageElement = document.getElementById("message-" + snapshot.key);
+            if (messageElement) {
+                messageElement.innerHTML = "This message has been removed";
+            }
         });
     </script>
 </body>
