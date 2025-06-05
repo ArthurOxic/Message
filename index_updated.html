@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatWeb</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="username-container">
+        <span class="userc">Create Username</span><br />
+        <input class="inpu133" type="text" id="username" placeholder="Enter username"><br />
+        <button class="bu1" onclick="joinChat()">JOIN</button>
+    </div>
+
+    <div class="divmain" id="chatContainer" style="display: none;">
+        <!-- All Delete My Messages button -->
+        <span class="hlw">WebChat</span>
+        <button class="delete-messages-button" id="deleteMyMessages" onclick="deleteAllMyMessages();">Delete All My Messages</button>
+
+        <!-- create a form to send message -->
+        <form class="dive1" id="messageForm" onsubmit="return sendMessage();">
+            <div class="alal">
+                <input class="input1234" id="message" placeholder="Enter message" autocomplete="off" required>
+                <input class="input1235" type="submit" value="Send">
+            </div>
+        </form>
+        
+        <!-- create a list for messages -->
+        <ul class="ul12" id="messages"></ul>
+    </div>
+
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/6.6.1/firebase-app.js"></script>
+    
+    <!-- include firebase database -->
+    <script src="https://www.gstatic.com/firebasejs/6.6.1/firebase-database.js"></script>
+    
+    <!-- Your web app's Firebase configuration -->
+    <script>
+        var firebaseConfig = {
+    apiKey: "AIzaSyBd1DzMFS0fZqSM5B95M2z0W1THsnE3ePI",
+    authDomain: "arx-message.firebaseapp.com",
+    databaseURL: "https://arx-message-default-rtdb.firebaseio.com",
+    projectId: "arx-message",
+    storageBucket: "arx-message.firebasestorage.app",
+    messagingSenderId: "362861685469",
+    appId: "1:362861685469:android:a3bcf5907bf5b2d8cd4934"
+};
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        console.log("Firebase initialized");
+
+        var myName;
+var userColors = {}; // To store unique colors for each username
+
+function joinChat() {
+    myName = document.getElementById("username").value;
+    if (myName.trim() !== "") {
+        document.querySelector(".username-container").style.display = "none";
+        document.getElementById("chatContainer").style.display = "block";
+    } else {
+        alert("Please enter a username");
+    }
+}
+
+function sendMessage() {
+    // get message
+    var message = document.getElementById("message").value;
+    console.log("Sending message:", message);
+
+    // save in database
+    firebase.database().ref("messages").push().set({
+        "sender": myName,
+        "message": message,
+        "timestamp": firebase.database.ServerValue.TIMESTAMP // Add timestamp for ordering
+    }, function(error) {
+        if (error) {
+            console.log("Error:", error);
+        } else {
+            console.log("Message sent successfully");
+        }
+    });
+
+    // clear the input field
+    document.getElementById("message").value = "";
+
+    // prevent form from submitting
+    return false;
+}
+
+// listen for incoming messages
+firebase.database().ref("messages").orderByChild("timestamp").on("value", function(snapshot) {
+    var messagesContainer = document.getElementById("messages");
+    messagesContainer.innerHTML = ""; // Clear current messages
+
+    snapshot.forEach(function(childSnapshot) {
+        var message = childSnapshot.val();
+        var messageClass = (message.sender === myName) ? "sent" : "received";
+
+        var messageElement = document.createElement("li");
+        messageElement.classList.add(messageClass);
+
+        var messageContainer = document.createElement("div");
+        messageContainer.classList.add("message-container");
+
+        var usernameDiv = document.createElement("div");
+        usernameDiv.classList.add("username");
+        usernameDiv.style.color = "#FFFFFF"; // Set username color to white
+        usernameDiv.style.fontWeight = "bold";
+        usernameDiv.textContent = message.sender;
+
+        var messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+        messageDiv.textContent = message.message;
+
+        messageContainer.appendChild(usernameDiv);
+        messageContainer.appendChild(messageDiv);
+        messageElement.appendChild(messageContainer);
+
+        messagesContainer.appendChild(messageElement);
+    });
+
+    scrollToBottom(); // Scroll to bottom after adding new messages
+});
+
+function deleteAllMyMessages() {
+    firebase.database().ref("messages").once("value", function(snapshot) {
+        snapshot.forEach(function(childSnapshot) {
+            if (childSnapshot.val().sender === myName) {
+                firebase.database().ref("messages").child(childSnapshot.key).remove();
+            }
+        });
+    });
+}
+
+function scrollToBottom() {
+    var messagesList = document.getElementById("messages");
+    messagesList.scrollTop = messagesList.scrollHeight;
+}
+
+        // attach listener for delete message
+        firebase.database().ref("messages").on("child_removed", function (snapshot) {
+            // remove message node
+            var messageElement = document.getElementById("message-" + snapshot.key);
+            if (messageElement) {
+                messageElement.innerHTML = "This message has been removed";
+            }
+        });
+    </script>
+</body>
+</html>
